@@ -1,13 +1,14 @@
 # Frontend Mentor Agent
 
-Este paso introduce el concepto de contexto del proyecto usando un archivo externo llamado `PROJECT_CONTEXT.md`.
+Este paso introduce la construccion del primer prompt real del agente.
 
 ## Estructura
 
-- `package.json`: configuracion minima del proyecto Node.js.
+- `package.json`: configuracion del proyecto y dependencia `dotenv`.
+- `.env.example`: ejemplo de configuracion del entorno.
 - `AGENTS.md`: instrucciones base que definen quien es el agente.
 - `PROJECT_CONTEXT.md`: informacion sobre el proyecto que el agente va a analizar.
-- `src/agent.js`: punto de entrada que lee e imprime ambos archivos.
+- `src/agent.js`: punto de entrada que lee ambos archivos y construye un prompt.
 
 ## Que es AGENTS.md
 
@@ -86,6 +87,37 @@ Contexto:
 
 Separar identidad y contexto permite cambiar el proyecto sin cambiar la personalidad base del agente.
 
+## Que es un prompt
+
+Un prompt es el texto completo que se le entregaria a un modelo para pedirle una respuesta.
+
+En este proyecto, el prompt no se escribe como un solo bloque fijo. Se construye uniendo partes.
+
+## Como construye el prompt el agente
+
+En este paso, `src/agent.js` hace esto:
+
+1. lee `AGENTS.md`
+2. lee `PROJECT_CONTEXT.md`
+3. lee `MODEL_NAME` desde el entorno
+4. une esas piezas en un solo texto final
+
+La idea central es esta:
+
+`AGENTS.md` + `PROJECT_CONTEXT.md` = prompt
+
+## Por que este enfoque es mas flexible
+
+Si las instrucciones estuvieran hardcodeadas dentro de `src/agent.js`, cualquier cambio obligaria a editar la logica del programa.
+
+Al separar las piezas:
+
+- puedes cambiar la identidad del agente sin tocar la logica
+- puedes cambiar el contexto del proyecto sin tocar la logica
+- puedes reutilizar el mismo codigo con otros proyectos o con otros agentes
+
+Esto hace que el agente sea mas facil de entender, mantener y expandir en pasos futuros.
+
 ## Ejecutar
 
 ```bash
@@ -96,5 +128,21 @@ node src/agent.js
 
 La terminal debe mostrar:
 
-1. el contenido completo de `AGENTS.md`
-2. el contenido completo de `PROJECT_CONTEXT.md`
+un prompt final que contenga:
+
+1. las instrucciones de `AGENTS.md`
+2. el contexto de `PROJECT_CONTEXT.md`
+
+## Configuracion
+
+Copia `.env.example` a `.env` si quieres definir el modelo de manera explicita:
+
+```bash
+cp .env.example .env
+```
+
+Contenido esperado:
+
+```text
+MODEL_NAME=mistral
+```

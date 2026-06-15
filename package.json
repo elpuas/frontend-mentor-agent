@@ -1,7 +1,10 @@
 {
   "name": "frontend-mentor-agent",
   "version": "1.0.0",
-  "description": "Smallest possible starting point for the workshop.",
+  "description": "Workshop step for building the first assembled agent prompt.",
   "type": "module",
-  "main": "src/agent.js"
+  "main": "src/agent.js",
+  "dependencies": {
+    "dotenv": "^16.6.1"
+  }
 }

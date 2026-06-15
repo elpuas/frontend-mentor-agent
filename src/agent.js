@@ -1,6 +1,10 @@
+import dotenv from "dotenv";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+// Carga variables desde `.env` para que el proyecto pueda configurarse sin tocar el codigo.
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,12 +31,35 @@ async function readProjectContextFile() {
 }
 
 /**
- * Punto de entrada del paso 03.
- * En este paso el agente todavia no usa IA: solo lee identidad y contexto desde archivos.
+ * Construye el prompt final combinando identidad del agente y contexto del proyecto.
+ *
+ * @param {object} params Datos necesarios para armar el prompt.
+ * @param {string} params.modelName Nombre del modelo configurado en el entorno.
+ * @param {string} params.agentsInstructions Instrucciones base del agente.
+ * @param {string} params.projectContext Contexto del proyecto actual.
+ * @returns {string} Prompt final listo para usarse en un modelo.
+ */
+function buildPrompt({ modelName, agentsInstructions, projectContext }) {
+  return `
+Model: ${modelName}
+
+# Agent Identity
+${agentsInstructions}
+
+# Project Context
+${projectContext}
+`.trim();
+}
+
+/**
+ * Punto de entrada del paso 04.
+ * En este paso el agente arma su primer prompt real, pero todavia no lo envia a ningun modelo.
  *
  * @returns {Promise<void>}
  */
 async function main() {
+  const modelName = process.env.MODEL_NAME?.trim() || "mistral";
+
   // AGENTS.md define la identidad del agente:
   // quien es, que rol tiene y como deberia comportarse.
   const agentsInstructions = await readAgentsFile();
@@ -41,13 +68,18 @@ async function main() {
   // que tipo de proyecto es y que clase de informacion necesita saber el agente.
   const projectContext = await readProjectContextFile();
 
-  // Imprimimos primero la identidad del agente.
-  console.log(agentsInstructions);
+  // Un prompt es el texto completo que luego recibira un modelo.
+  // Aqui lo armamos a partir de varias fuentes para que cada parte tenga una responsabilidad clara.
+  const prompt = buildPrompt({
+    modelName,
+    agentsInstructions,
+    projectContext
+  });
 
-  console.log("");
-
-  // Imprimimos despues el contexto del proyecto para mostrar que son dos capas distintas.
-  console.log(projectContext);
+  // Separamos identidad y contexto porque no significan lo mismo:
+  // la identidad explica como debe comportarse el agente,
+  // y el contexto explica sobre que proyecto debe razonar.
+  console.log(prompt);
 }
 
 main();
