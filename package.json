@@ -1,20 +1,7 @@
 {
   "name": "frontend-mentor-agent",
   "version": "1.0.0",
-  "description": "Repositorio de taller para un agente local que revisa commits de frontend con Ollama.",
+  "description": "Smallest possible starting point for the workshop.",
   "type": "module",
-  "main": "src/agent.js",
-  "scripts": {
-    "start": "node src/agent.js",
-    "prepare": "husky"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "dependencies": {
-    "dotenv": "^16.6.1",
-    "husky": "^9.1.7",
-    "node-fetch": "^3.3.2",
-    "octokit": "^4.1.3"
-  }
+  "main": "src/agent.js"
 }

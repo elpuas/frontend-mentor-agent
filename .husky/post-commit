@@ -1,5 +1,0 @@
-#!/usr/bin/env sh
-
-# Este hook corre automáticamente después de cada commit.
-# Mantenerlo pequeño facilita explicar que Husky solo dispara el agente.
-node src/agent.js
