@@ -4,8 +4,12 @@
   "description": "Workshop step for building the first assembled agent prompt.",
   "type": "module",
   "main": "src/agent.js",
+  "scripts": {
+    "prepare": "husky"
+  },
   "dependencies": {
     "dotenv": "^16.6.1",
+    "husky": "^9.1.7",
     "node-fetch": "^3.3.2",
     "octokit": "^4.1.3"
   }

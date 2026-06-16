@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+# Los Git hooks son scripts que Git ejecuta automaticamente en momentos concretos del flujo.
+# Husky simplifica la configuracion de esos hooks dentro del proyecto.
+
+# Elegimos `post-commit` porque queremos que el agente trabaje despues de que el commit ya exista.
+# Asi puede leer metadata, diff y contexto reales sin pedir que la persona lo ejecute manualmente.
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Skipping Frontend Mentor Agent: Node.js is not available."
+  exit 0
+fi
+
+# La ejecucion manual usa `node src/agent.js`.
+# La ejecucion automatica hace exactamente lo mismo, pero disparada por Git despues del commit.
+node src/agent.js

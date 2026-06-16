@@ -12,7 +12,7 @@ const execFileAsync = promisify(execFile);
 async function runGitCommand(args) {
   try {
     const { stdout } = await execFileAsync("git", args, {
-      maxBuffer: 10 * 1024 * 1024
+      maxBuffer: 50 * 1024 * 1024
     });
 
     return stdout.trim();

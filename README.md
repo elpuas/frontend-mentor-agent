@@ -431,3 +431,95 @@ La terminal debe mostrar:
 5. la lista de skills seleccionadas
 6. el review generado por Ollama
 7. la URL del GitHub Issue creado
+
+## Automatizacion con Husky
+
+En este paso agregamos automatizacion local para que el agente corra solo despues de cada commit.
+
+### Que pasa despues de `git commit`
+
+Cuando haces:
+
+```bash
+git commit -m "test"
+```
+
+Git puede ejecutar hooks locales asociados a ese evento.
+
+En este proyecto usamos el hook:
+
+```text
+post-commit
+```
+
+Eso significa que el commit termina primero y, justo despues, se ejecuta el agente.
+
+### Que hace Husky
+
+Husky intercepta los hooks de Git y los conecta con archivos versionados dentro del repositorio.
+
+Eso permite que el equipo vea y mantenga los hooks como parte del codigo del proyecto, en vez de depender de configuraciones ocultas en cada maquina.
+
+### Por que elegimos `post-commit`
+
+Elegimos `post-commit` porque este agente necesita leer:
+
+- el commit creado
+- su metadata
+- su diff
+
+Si el hook corriera antes del commit, el agente no tendria ese estado final consolidado.
+
+### Diferencia entre ejecucion manual y automatizada
+
+Manual:
+
+- tu corres `node src/agent.js`
+- util para aprender, depurar y probar
+
+Automatizada:
+
+- Git dispara el agente solo
+- util para integrar el flujo al trabajo diario
+
+### Como desactivar hooks temporalmente
+
+Si quieres hacer un commit sin ejecutar hooks:
+
+```bash
+git commit --no-verify -m "test"
+```
+
+Eso desactiva temporalmente los hooks para ese commit puntual.
+
+### Como diagnosticar Husky
+
+Si Husky no corre:
+
+1. ejecuta `npm install`
+2. ejecuta `npm run prepare`
+3. confirma que existe `.husky/post-commit`
+4. revisa que `node --version` funcione en tu terminal
+5. prueba ejecutar manualmente `sh .husky/post-commit`
+
+Si el hook corre pero el agente falla, el problema ya no es Husky: normalmente sera Ollama, GitHub o variables de entorno.
+
+## Flujo Final
+
+```text
+Developer
+↓
+git commit
+↓
+Husky
+↓
+Frontend Mentor Agent
+↓
+Git Diff
+↓
+Skills
+↓
+Ollama
+↓
+GitHub Issue
+```
