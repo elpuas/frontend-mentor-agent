@@ -9,6 +9,7 @@ import {
   getLatestCommitHash,
   getLatestCommitMessage
 } from "./git.js";
+import { createIssue } from "./github.js";
 import { requestFromOllama } from "./ollama.js";
 
 // Carga variables desde `.env` para que el proyecto pueda configurarse sin tocar el codigo.
@@ -37,6 +38,22 @@ async function readFileFromRoot(relativePath) {
 function getModelName() {
   const value = process.env.MODEL_NAME?.trim();
   return value || "mistral";
+}
+
+/**
+ * Obtiene una variable de entorno obligatoria cuando una accion externa la necesita.
+ *
+ * @param {string} name Nombre de la variable requerida.
+ * @returns {string} Valor validado.
+ */
+function getRequiredEnvVar(name) {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}. Update .env before running this step.`);
+  }
+
+  return value;
 }
 
 /**
@@ -99,6 +116,16 @@ Requirements:
   3. Problems Found
   4. Suggested Next Steps
 `.trim();
+}
+
+/**
+ * Extrae la primera linea del mensaje del commit para usarla como titulo corto.
+ *
+ * @param {string} commitMessage Mensaje completo del commit.
+ * @returns {string} Asunto del commit o un texto por defecto.
+ */
+function getCommitSubject(commitMessage) {
+  return commitMessage.split("\n")[0].trim() || "Untitled commit";
 }
 
 /**
@@ -222,7 +249,44 @@ async function main() {
     prompt
   });
 
+  console.log("\n=== AI Review ===\n");
   console.log(response);
+
+  // GitHub Issues son una forma simple de persistir el resultado del agente.
+  // El analisis ocurre primero; la accion externa sucede al final, cuando ya existe un resultado util.
+  const githubToken = getRequiredEnvVar("GITHUB_TOKEN");
+  const githubRepo = getRequiredEnvVar("GITHUB_REPO");
+  const commitSubject = getCommitSubject(commitMessage);
+
+  const issueBody = `
+## Frontend Review
+
+- Branch: ${branch}
+- Commit Hash: ${commitHash}
+- Commit Message: ${commitMessage}
+
+## Changed Files
+${changedFiles.length > 0 ? changedFiles.map((file) => `- ${file}`).join("\n") : "- No files detected"}
+
+## Selected Skills
+${selectedSkillPaths.map((file) => `- ${file}`).join("\n")}
+
+## AI Review
+
+${response}
+`.trim();
+
+  // Las acciones suelen ser el ultimo paso del flujo del agente:
+  // primero entiende el contexto y genera una conclusion, y solo despues modifica un sistema externo.
+  const issueUrl = await createIssue({
+    githubToken,
+    githubRepo,
+    title: `Frontend Review: ${commitSubject}`,
+    body: issueBody
+  });
+
+  console.log("\nCreated GitHub Issue:");
+  console.log(issueUrl);
 }
 
 main().catch((error) => {

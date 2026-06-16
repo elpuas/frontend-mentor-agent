@@ -1,6 +1,6 @@
 # Frontend Mentor Agent
 
-Este paso introduce skills para especializar el prompt del agente segun el tipo de cambio detectado.
+Este paso introduce la primera accion externa del agente: guardar el review como un GitHub Issue.
 
 ## Estructura
 
@@ -8,7 +8,8 @@ Este paso introduce skills para especializar el prompt del agente segun el tipo 
 - `.env.example`: ejemplo de configuracion del entorno.
 - `AGENTS.md`: instrucciones base que definen quien es el agente.
 - `PROJECT_CONTEXT.md`: informacion sobre el proyecto que el agente va a analizar.
-- `src/agent.js`: punto de entrada que construye el prompt, muestra metadatos y enseña la respuesta final.
+- `src/agent.js`: punto de entrada que construye el prompt, genera el review y dispara la accion final.
+- `src/github.js`: modulo que encapsula la comunicacion con la API de GitHub.
 - `src/git.js`: modulo que consulta informacion del repositorio usando Git.
 - `src/ollama.js`: modulo que encapsula la comunicacion con Ollama.
 - `skills/`: instrucciones especializadas que se cargan segun el tipo de archivo cambiado.
@@ -110,10 +111,12 @@ En este paso, `src/agent.js` hace esto:
 8. extrae la lista de archivos cambiados
 9. selecciona skills relevantes para ese commit
 10. une esas piezas en un solo texto final
+11. envia el prompt a Ollama
+12. crea un GitHub Issue con el review generado
 
 La idea central es esta:
 
-`AGENTS.md` + `PROJECT_CONTEXT.md` + Git metadata + diff + skills = prompt
+`AGENTS.md` + `PROJECT_CONTEXT.md` + Git metadata + diff + skills = prompt -> review -> GitHub Issue
 
 ## Por que este enfoque es mas flexible
 
@@ -273,6 +276,64 @@ Si el diff incluye archivos `.css`, carga:
 
 Esto hace que la composicion del prompt sea dinamica en vez de fija.
 
+## Que es un GitHub Personal Access Token
+
+Un Personal Access Token es una credencial personal para usar la API de GitHub desde scripts o aplicaciones.
+
+En este paso se usa en:
+
+- `GITHUB_TOKEN`
+
+Para este taller, usa un token de una cuenta personal y prueba contra un repositorio tuyo.
+
+## Formato de GITHUB_REPO
+
+La variable `GITHUB_REPO` debe tener este formato:
+
+```text
+owner/repo
+```
+
+Ejemplo:
+
+```text
+tu-usuario/frontend-mentor-agent
+```
+
+## Como funciona el flujo con Issues
+
+En este paso el agente:
+
+1. lee contexto y cambios
+2. genera un review con Ollama
+3. convierte ese review en un issue persistente en GitHub
+
+Eso separa dos capas del trabajo del agente:
+
+- analisis: entender el cambio y redactar el review
+- accion: escribir ese resultado en un sistema externo
+
+## Por que los Issues son utiles como persistencia
+
+La terminal solo muestra el resultado en ese momento.
+
+Un Issue permite:
+
+- guardar el review
+- compartirlo con otras personas
+- volver a leerlo despues
+- tratarlo como seguimiento real del proyecto
+
+## Como probar esto de forma segura
+
+La forma mas segura es usar un repositorio personal de pruebas.
+
+1. crea un repositorio tuyo en GitHub
+2. genera un token personal con permisos suficientes para crear issues
+3. configura `.env` con `GITHUB_TOKEN` y `GITHUB_REPO`
+4. ejecuta `node src/agent.js`
+5. confirma que el issue se haya creado en ese repositorio
+
 ## Que es Ollama
 
 Ollama es una herramienta para ejecutar modelos de lenguaje localmente en tu computadora.
@@ -346,6 +407,8 @@ Contenido esperado:
 
 ```text
 MODEL_NAME=mistral
+GITHUB_TOKEN=tu_token
+GITHUB_REPO=tu-usuario/frontend-mentor-agent
 ```
 
 ## Como probar el agente
@@ -354,4 +417,17 @@ MODEL_NAME=mistral
 2. copia `.env.example` a `.env`
 3. confirma que Ollama esta corriendo
 4. confirma que `mistral` esta instalado con `ollama pull mistral`
-5. ejecuta `node src/agent.js`
+5. agrega `GITHUB_TOKEN` y `GITHUB_REPO` en `.env`
+6. ejecuta `node src/agent.js`
+
+## Resultado esperado
+
+La terminal debe mostrar:
+
+1. la rama actual
+2. el hash del ultimo commit
+3. el mensaje del ultimo commit
+4. la lista de archivos cambiados
+5. la lista de skills seleccionadas
+6. el review generado por Ollama
+7. la URL del GitHub Issue creado
