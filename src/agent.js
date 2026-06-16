@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { requestFromOllama } from "./ollama.js";
 
 // Carga variables desde `.env` para que el proyecto pueda configurarse sin tocar el codigo.
 dotenv.config();
@@ -79,7 +80,19 @@ async function main() {
   // Separamos identidad y contexto porque no significan lo mismo:
   // la identidad explica como debe comportarse el agente,
   // y el contexto explica sobre que proyecto debe razonar.
-  console.log(prompt);
+
+  // Enviamos el prompt completo al modelo local.
+  // El modelo procesa ese texto y devuelve una respuesta generada.
+  const response = await requestFromOllama({
+    modelName,
+    prompt
+  });
+
+  console.log(response);
 }
 
-main();
+main().catch((error) => {
+  console.error("Agent failed.");
+  console.error(error.message);
+  process.exitCode = 1;
+});

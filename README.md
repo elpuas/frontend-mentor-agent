@@ -1,6 +1,6 @@
 # Frontend Mentor Agent
 
-Este paso introduce la construccion del primer prompt real del agente.
+Este paso conecta el agente con un modelo local usando Ollama.
 
 ## Estructura
 
@@ -8,7 +8,8 @@ Este paso introduce la construccion del primer prompt real del agente.
 - `.env.example`: ejemplo de configuracion del entorno.
 - `AGENTS.md`: instrucciones base que definen quien es el agente.
 - `PROJECT_CONTEXT.md`: informacion sobre el proyecto que el agente va a analizar.
-- `src/agent.js`: punto de entrada que lee ambos archivos y construye un prompt.
+- `src/agent.js`: punto de entrada que construye el prompt y muestra la respuesta final.
+- `src/ollama.js`: modulo que encapsula la comunicacion con Ollama.
 
 ## Que es AGENTS.md
 
@@ -118,6 +119,50 @@ Al separar las piezas:
 
 Esto hace que el agente sea mas facil de entender, mantener y expandir en pasos futuros.
 
+## Que es Ollama
+
+Ollama es una herramienta para ejecutar modelos de lenguaje localmente en tu computadora.
+
+En este paso la usamos para completar el flujo:
+
+prompt -> modelo local -> respuesta
+
+## Por que usar un LLM local
+
+Un modelo local permite:
+
+- aprender sin depender de una API externa
+- experimentar mas rapido
+- mantener el proyecto simple para taller
+
+## Como instalar Ollama
+
+Descargalo desde [ollama.com/download](https://ollama.com/download).
+
+## Como instalar Mistral
+
+Despues de instalar Ollama, descarga el modelo:
+
+```bash
+ollama pull mistral
+```
+
+## Como verificar que Ollama esta corriendo
+
+Puedes probar cualquiera de estas opciones:
+
+```bash
+ollama list
+```
+
+o:
+
+```bash
+curl http://localhost:11434
+```
+
+Si Ollama no esta activo, el agente mostrara un error de conexion.
+
 ## Ejecutar
 
 ```bash
@@ -128,10 +173,8 @@ node src/agent.js
 
 La terminal debe mostrar:
 
-un prompt final que contenga:
-
-1. las instrucciones de `AGENTS.md`
-2. el contexto de `PROJECT_CONTEXT.md`
+1. el prompt construido internamente
+2. la respuesta generada por el modelo local
 
 ## Configuracion
 
@@ -146,3 +189,11 @@ Contenido esperado:
 ```text
 MODEL_NAME=mistral
 ```
+
+## Como probar el agente
+
+1. instala dependencias con `npm install`
+2. copia `.env.example` a `.env`
+3. confirma que Ollama esta corriendo
+4. confirma que `mistral` esta instalado con `ollama pull mistral`
+5. ejecuta `node src/agent.js`
