@@ -1,10 +1,11 @@
 {
   "name": "frontend-mentor-agent",
   "version": "1.0.0",
-  "description": "Workshop step for building the first assembled agent prompt.",
+  "description": "Workshop repo for a local-first AI agent that reviews frontend commits with Ollama.",
   "type": "module",
   "main": "src/agent.js",
   "scripts": {
+    "start": "node src/agent.js",
     "prepare": "husky"
   },
   "dependencies": {
