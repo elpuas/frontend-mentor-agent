@@ -46,3 +46,48 @@ export async function getLatestCommitHash() {
 export async function getLatestCommitMessage() {
   return runGitCommand(["log", "-1", "--pretty=%B"]);
 }
+
+/**
+ * Obtiene el diff completo del commit mas reciente.
+ *
+ * Un diff es la representacion textual de los cambios guardados en un commit.
+ * Git almacena las modificaciones comparando versiones de archivos y mostrando
+ * que lineas se agregaron, eliminaron o cambiaron.
+ *
+ * @returns {Promise<string>} Diff completo de `HEAD`, incluyendo stat y patch.
+ */
+export async function getLatestCommitDiff() {
+  return runGitCommand(["show", "--no-color", "--stat", "--patch", "HEAD"]);
+}
+
+/**
+ * Extrae los archivos modificados a partir de las cabeceras del diff.
+ *
+ * La metadata del commit ayuda, pero no alcanza para revisar codigo:
+ * el diff le muestra al agente los cambios reales sobre los que debe razonar.
+ *
+ * @param {string} diff Texto completo del diff.
+ * @returns {string[]} Lista unica de archivos cambiados.
+ */
+export function getChangedFilesFromDiff(diff) {
+  const changedFiles = new Set();
+  const lines = diff.split("\n");
+
+  for (const line of lines) {
+    // Las cabeceras `diff --git a/ruta b/ruta` indican el inicio de cada archivo modificado.
+    if (!line.startsWith("diff --git ")) {
+      continue;
+    }
+
+    const parts = line.split(" ");
+    const bPath = parts[3];
+
+    if (!bPath) {
+      continue;
+    }
+
+    changedFiles.add(bPath.replace(/^b\//, ""));
+  }
+
+  return [...changedFiles];
+}

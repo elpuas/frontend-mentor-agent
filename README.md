@@ -1,6 +1,6 @@
 # Frontend Mentor Agent
 
-Este paso agrega metadatos de Git al prompt para que el agente empiece a entender el repositorio real.
+Este paso introduce skills para especializar el prompt del agente segun el tipo de cambio detectado.
 
 ## Estructura
 
@@ -11,6 +11,7 @@ Este paso agrega metadatos de Git al prompt para que el agente empiece a entende
 - `src/agent.js`: punto de entrada que construye el prompt, muestra metadatos y enseña la respuesta final.
 - `src/git.js`: modulo que consulta informacion del repositorio usando Git.
 - `src/ollama.js`: modulo que encapsula la comunicacion con Ollama.
+- `skills/`: instrucciones especializadas que se cargan segun el tipo de archivo cambiado.
 
 ## Que es AGENTS.md
 
@@ -105,11 +106,14 @@ En este paso, `src/agent.js` hace esto:
 4. consulta la rama actual
 5. consulta el hash del ultimo commit
 6. consulta el mensaje del ultimo commit
-7. une esas piezas en un solo texto final
+7. consulta el diff del ultimo commit
+8. extrae la lista de archivos cambiados
+9. selecciona skills relevantes para ese commit
+10. une esas piezas en un solo texto final
 
 La idea central es esta:
 
-`AGENTS.md` + `PROJECT_CONTEXT.md` + Git metadata = prompt
+`AGENTS.md` + `PROJECT_CONTEXT.md` + Git metadata + diff + skills = prompt
 
 ## Por que este enfoque es mas flexible
 
@@ -160,6 +164,114 @@ Pero ya estamos dando al agente:
 - un mensaje asociado a ese commit
 
 Eso prepara el terreno para los siguientes pasos, donde el agente podra razonar sobre cambios concretos.
+
+## Que hace `git show`
+
+En este paso usamos este comando:
+
+```bash
+git show --no-color --stat --patch HEAD
+```
+
+Ese comando devuelve:
+
+- los metadatos del commit
+- un resumen de archivos cambiados con `--stat`
+- el patch completo con las lineas agregadas y eliminadas
+
+`--no-color` evita caracteres de color para que el texto sea mas facil de procesar por el agente.
+
+## Que contiene un diff
+
+Un diff incluye informacion como:
+
+- que archivos cambiaron
+- que lineas se agregaron
+- que lineas se eliminaron
+- en que partes del archivo ocurrio el cambio
+
+Eso convierte al diff en la pieza mas importante para un agente de revision de codigo.
+
+## Por que la metadata sola no alcanza
+
+Saber la rama, el hash y el mensaje del commit ayuda, pero no muestra el cambio real.
+
+Por ejemplo, un mensaje puede decir "improve layout", pero solo el diff revela:
+
+- que archivos tocaron
+- que selectores cambiaron
+- que HTML se agrego o elimino
+
+## Por que este es el fundamento de un code review agent
+
+Un agente de revision necesita ver el cambio exacto, no solo un resumen humano.
+
+Cuando el prompt incluye el diff:
+
+- el modelo puede hablar sobre lineas reales
+- el review se vuelve mas especifico
+- la respuesta deja de ser generica y empieza a estar anclada al codigo cambiado
+
+## Que es una skill
+
+Una skill es un bloque pequeno de instrucciones especializadas.
+
+No define quien es el agente. Define en que fijarse para una tarea concreta.
+
+En este paso hay skills para:
+
+- HTML
+- CSS
+- accesibilidad
+- mensajes de commit
+
+## Diferencia entre AGENTS.md, PROJECT_CONTEXT.md, Skills y Git Diff
+
+`AGENTS.md`:
+
+- define la identidad del agente
+- describe su rol general
+
+`PROJECT_CONTEXT.md`:
+
+- describe el proyecto que se esta revisando
+- ajusta el nivel y el enfoque del agente
+
+`skills/`:
+
+- agregan instrucciones especializadas
+- se cargan solo cuando hacen falta
+
+`Git Diff`:
+
+- muestra el cambio real del codigo
+- le da evidencia concreta al modelo
+
+## Por que los agentes se construyen con multiples componentes
+
+Un solo bloque de prompt suele mezclar demasiadas responsabilidades.
+
+Separar componentes permite:
+
+- cambiar la identidad sin tocar las skills
+- cambiar el proyecto sin tocar la identidad
+- activar especializaciones solo cuando aplican
+- mantener el prompt mas claro y modular
+
+## Como se cargan las skills en este paso
+
+El agente siempre carga `skills/commit-message.md`.
+
+Si el diff incluye archivos `.html`, carga:
+
+- `skills/html-review.md`
+- `skills/accessibility-review.md`
+
+Si el diff incluye archivos `.css`, carga:
+
+- `skills/css-review.md`
+
+Esto hace que la composicion del prompt sea dinamica en vez de fija.
 
 ## Que es Ollama
 
@@ -218,7 +330,9 @@ La terminal debe mostrar:
 1. la rama actual
 2. el hash del ultimo commit
 3. el mensaje del ultimo commit
-4. la respuesta generada por el modelo local
+4. la lista de archivos cambiados
+5. la lista de skills seleccionadas
+6. la respuesta generada por el modelo local
 
 ## Configuracion
 
