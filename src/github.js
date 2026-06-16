@@ -1,13 +1,12 @@
 import { Octokit } from "octokit";
 
 /**
- * Divide el valor `owner/repo` en las partes que necesita la API de GitHub.
+ * Valida y separa el repositorio esperado por GitHub en formato owner/repo.
  *
  * @param {string} repo Repositorio en formato `owner/repo`.
  * @returns {{ owner: string, repo: string }} Datos listos para Octokit.
- * @throws {Error} Lanza un error si el formato es inválido.
  */
-function parseRepo(repo) {
+function parseRepository(repo) {
   const [owner, name] = repo.split("/");
 
   if (!owner || !name) {
@@ -20,29 +19,38 @@ function parseRepo(repo) {
 }
 
 /**
- * Crea un GitHub Issue con el review generado por el agente.
+ * Crea un GitHub Issue y devuelve su URL.
  *
- * @param {object} params Parámetros de creación del issue.
+ * Octokit es el cliente oficial para hablar con la API de GitHub desde Node.js.
+ * Lo usamos para que el agente pueda convertir un analisis en una accion persistente.
+ *
+ * @param {object} params Datos necesarios para crear el issue.
  * @param {string} params.githubToken Token personal de GitHub.
  * @param {string} params.githubRepo Repositorio destino en formato `owner/repo`.
- * @param {string} params.title Título del issue.
- * @param {string} params.body Contenido completo del issue.
- * @returns {Promise<void>}
- * @throws {Error} Lanza un error claro si GitHub rechaza la petición.
+ * @param {string} params.title Titulo del issue.
+ * @param {string} params.body Cuerpo del issue.
+ * @returns {Promise<string>} URL del issue creado.
  */
-export async function createReviewIssue({ githubToken, githubRepo, title, body }) {
-  const { owner, repo } = parseRepo(githubRepo);
+export async function createIssue({ githubToken, githubRepo, title, body }) {
+  const { owner, repo } = parseRepository(githubRepo);
   const octokit = new Octokit({ auth: githubToken });
 
   try {
-    // Guardamos el review en GitHub para que el feedback no se pierda en la terminal.
-    await octokit.issues.create({
+    const response = await octokit.rest.issues.create({
       owner,
       repo,
       title,
       body
     });
+
+    return response.data.html_url;
   } catch (error) {
+    if (error.status === 401 || error.status === 403) {
+      throw new Error(
+        "GitHub rejected the credentials. Check GITHUB_TOKEN and confirm it can create issues in the target repository."
+      );
+    }
+
     throw new Error(`Failed to create GitHub Issue: ${error.message}`);
   }
 }

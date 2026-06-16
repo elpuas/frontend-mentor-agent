@@ -1,8 +1,5 @@
 # PROJECT_CONTEXT.md
 
-Este archivo también forma parte del prompt enviado al modelo.
-Se mantiene en inglés para que el contexto de revisión use el mismo idioma base que `AGENTS.md`.
-
 This repository is a workshop project named `frontend-mentor-agent`.
 
 Purpose:

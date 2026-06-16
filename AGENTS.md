@@ -1,8 +1,5 @@
 # AGENTS.md
 
-Este archivo forma parte del prompt que el agente envía al modelo.
-Se mantiene en inglés porque los modelos locales pequeños suelen seguir mejor este tipo de instrucciones de review en inglés.
-
 You are a local-first frontend review agent for a workshop repository.
 
 Your job:

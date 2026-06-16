@@ -4,37 +4,27 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 /**
- * Ejecuta un comando de Git y devuelve su salida como texto limpio.
+ * Ejecuta un comando de Git y devuelve su salida como texto.
  *
- * @param {string[]} args Argumentos que se enviarán al binario `git`.
- * @returns {Promise<string>} Salida estándar del comando sin espacios extra.
- * @throws {Error} Lanza un error con contexto si Git falla.
+ * @param {string[]} args Argumentos enviados al binario `git`.
+ * @returns {Promise<string>} Salida limpia del comando.
  */
 async function runGitCommand(args) {
   try {
     const { stdout } = await execFileAsync("git", args, {
-      maxBuffer: 10 * 1024 * 1024
+      maxBuffer: 50 * 1024 * 1024
     });
 
     return stdout.trim();
   } catch (error) {
-    throw new Error(
-      `Git command failed: git ${args.join(" ")}\n${error.stderr || error.message}`
-    );
+    throw new Error(`Git command failed: git ${args.join(" ")}\n${error.stderr || error.message}`);
   }
 }
 
 /**
- * Lee el diff completo del último commit para tener contexto de revisión.
- *
- * @returns {Promise<string>} Diff del commit `HEAD`, incluyendo patch y stat.
- */
-export async function getLatestCommitDiff() {
-  return runGitCommand(["show", "--no-color", "--stat", "--patch", "HEAD"]);
-}
-
-/**
  * Obtiene el nombre de la rama actual.
+ *
+ * La rama puede ser util para que el agente entienda en que linea de trabajo esta parado.
  *
  * @returns {Promise<string>} Nombre de la rama activa.
  */
@@ -43,36 +33,55 @@ export async function getCurrentBranch() {
 }
 
 /**
- * Obtiene el hash corto del último commit.
+ * Obtiene el hash corto del commit mas reciente.
  *
- * @returns {Promise<string>} Hash corto de `HEAD`.
+ * Un commit hash es el identificador unico de un commit dentro del historial de Git.
+ *
+ * @returns {Promise<string>} Hash corto del commit actual.
  */
 export async function getLatestCommitHash() {
   return runGitCommand(["rev-parse", "--short", "HEAD"]);
 }
 
 /**
- * Obtiene el mensaje completo del último commit.
+ * Obtiene el mensaje del commit mas reciente.
  *
- * @returns {Promise<string>} Mensaje completo de `HEAD`.
+ * El commit message resume que cambio hizo la persona en ese punto del historial.
+ *
+ * @returns {Promise<string>} Mensaje completo del ultimo commit.
  */
 export async function getLatestCommitMessage() {
   return runGitCommand(["log", "-1", "--pretty=%B"]);
 }
 
 /**
- * Extrae los archivos modificados a partir de las cabeceras `diff --git`.
+ * Obtiene el diff completo del commit mas reciente.
+ *
+ * Un diff es la representacion textual de los cambios guardados en un commit.
+ * Git almacena las modificaciones comparando versiones de archivos y mostrando
+ * que lineas se agregaron, eliminaron o cambiaron.
+ *
+ * @returns {Promise<string>} Diff completo de `HEAD`, incluyendo stat y patch.
+ */
+export async function getLatestCommitDiff() {
+  return runGitCommand(["show", "--no-color", "--stat", "--patch", "HEAD"]);
+}
+
+/**
+ * Extrae los archivos modificados a partir de las cabeceras del diff.
+ *
+ * La metadata del commit ayuda, pero no alcanza para revisar codigo:
+ * el diff le muestra al agente los cambios reales sobre los que debe razonar.
  *
  * @param {string} diff Texto completo del diff.
- * @returns {string[]} Lista sin duplicados de archivos modificados.
+ * @returns {string[]} Lista unica de archivos cambiados.
  */
 export function getChangedFilesFromDiff(diff) {
   const changedFiles = new Set();
   const lines = diff.split("\n");
 
   for (const line of lines) {
-    // Las cabeceras del diff se ven así: `diff --git a/ruta b/ruta`.
-    // Solo esas líneas nos interesan para descubrir qué archivos cambiaron.
+    // Las cabeceras `diff --git a/ruta b/ruta` indican el inicio de cada archivo modificado.
     if (!line.startsWith("diff --git ")) {
       continue;
     }

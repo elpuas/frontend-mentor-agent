@@ -1,26 +1,26 @@
 import fetch from "node-fetch";
 
+const OLLAMA_URL = "http://localhost:11434/api/generate";
+
 /**
- * Envía el prompt de revisión al endpoint de Ollama configurado.
+ * Envia un prompt a Ollama y devuelve la respuesta del modelo.
  *
- * @param {object} params Parámetros de la solicitud.
- * @param {string} params.ollamaUrl URL del endpoint `/api/generate`.
- * @param {string} params.model Nombre del modelo local.
- * @param {string} params.prompt Prompt final armado por el agente.
+ * @param {object} params Datos necesarios para la consulta.
+ * @param {string} params.modelName Nombre del modelo local.
+ * @param {string} params.prompt Prompt final que recibira el modelo.
  * @returns {Promise<string>} Respuesta del modelo como texto.
- * @throws {Error} Lanza un error claro si la petición falla o el formato es inválido.
  */
-export async function requestReviewFromOllama({ ollamaUrl, model, prompt }) {
+export async function requestFromOllama({ modelName, prompt }) {
   try {
-    // Esta es la llamada HTTP principal al modelo local.
-    // `stream: false` simplifica el taller porque devuelve una sola respuesta JSON.
-    const response = await fetch(ollamaUrl, {
+    // Ollama es un servidor local que ejecuta modelos en la propia computadora.
+    // Lo usamos para hacer inferencia local sin depender de servicios en la nube.
+    const response = await fetch(OLLAMA_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model,
+        model: modelName,
         prompt,
         stream: false
       })
@@ -28,30 +28,47 @@ export async function requestReviewFromOllama({ ollamaUrl, model, prompt }) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Ollama request failed with status ${response.status}: ${errorText}`
-      );
+
+      if (response.status === 404) {
+        throw new Error(
+          `The Ollama model "${modelName}" was not found. Install it first with: ollama pull ${modelName}`
+        );
+      }
+
+      throw new Error(`Ollama request failed with status ${response.status}: ${errorText}`);
     }
 
+    // La respuesta vuelve en JSON y debe incluir la propiedad `response`.
     const data = await response.json();
 
-    // Validamos el formato esperado para evitar que el resto del flujo continúe con datos rotos.
-    if (!data.response) {
-      throw new Error("Ollama returned an unexpected response format.");
+    if (typeof data.response !== "string") {
+      throw new Error("Ollama returned an invalid response format.");
     }
 
     return data.response.trim();
   } catch (error) {
-    // Convertimos errores de conexión en mensajes fáciles de entender para el taller.
-    if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
+    const nestedCode = error.cause?.code;
+    const message = error.message || "";
+
+    // Si Ollama no esta corriendo, fetch falla antes de obtener una respuesta HTTP valida.
+    if (
+      error.code === "ECONNREFUSED" ||
+      error.code === "ENOTFOUND" ||
+      nestedCode === "ECONNREFUSED" ||
+      nestedCode === "ENOTFOUND"
+    ) {
       throw new Error(
-        "Could not connect to Ollama. Make sure Ollama is installed, running, and available at the configured OLLAMA_URL."
+        "Could not connect to Ollama. Make sure Ollama is installed and running on http://localhost:11434."
       );
     }
 
-    if (error.message.includes("ECONNREFUSED") || error.message.includes("ENOTFOUND")) {
+    if (
+      message.includes("ECONNREFUSED") ||
+      message.includes("ENOTFOUND") ||
+      message.includes("request to http://localhost:11434/api/generate failed")
+    ) {
       throw new Error(
-        "Could not connect to Ollama. Make sure Ollama is installed, running, and available at the configured OLLAMA_URL."
+        "Could not connect to Ollama. Make sure Ollama is installed and running on http://localhost:11434."
       );
     }
 
