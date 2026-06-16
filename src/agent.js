@@ -30,22 +30,30 @@ async function readFileFromRoot(relativePath) {
 }
 
 /**
- * Construye el prompt final combinando identidad del agente y contexto del proyecto.
+ * Obtiene el modelo configurado y aplica una validacion minima.
+ *
+ * @returns {string} Nombre del modelo que usara Ollama.
+ */
+function getModelName() {
+  const value = process.env.MODEL_NAME?.trim();
+  return value || "mistral";
+}
+
+/**
+ * Construye el prompt final de revision usando contexto, skills y datos reales del commit.
  *
  * @param {object} params Datos necesarios para armar el prompt.
- * @param {string} params.modelName Nombre del modelo configurado en el entorno.
  * @param {string} params.agentsInstructions Instrucciones base del agente.
- * @param {string} params.projectContext Contexto del proyecto actual.
- * @param {string} params.branch Rama actual del repositorio.
- * @param {string} params.commitHash Hash corto del commit mas reciente.
- * @param {string} params.commitMessage Mensaje del commit mas reciente.
+  * @param {string} params.projectContext Contexto del proyecto actual.
+  * @param {string} params.branch Rama actual del repositorio.
+  * @param {string} params.commitHash Hash corto del commit mas reciente.
+  * @param {string} params.commitMessage Mensaje del commit mas reciente.
  * @param {string[]} params.changedFiles Archivos detectados dentro del diff.
  * @param {string} params.diff Diff completo del ultimo commit.
  * @param {string} params.skillBlock Bloque con las skills seleccionadas.
  * @returns {string} Prompt final listo para usarse en un modelo.
  */
 function buildPrompt({
-  modelName,
   agentsInstructions,
   projectContext,
   branch,
@@ -56,26 +64,40 @@ function buildPrompt({
   skillBlock
 }) {
   return `
-Model: ${modelName}
+You are reviewing the latest frontend commit in a workshop repository.
 
-# Agent Identity
+# AGENTS.md
 ${agentsInstructions}
 
-# Project Context
+# PROJECT_CONTEXT.md
 ${projectContext}
-
-# Git Metadata
-- Branch: ${branch}
-- Latest Commit Hash: ${commitHash}
-- Latest Commit Message: ${commitMessage}
-- Changed Files:
-${changedFiles.map((file) => `  - ${file}`).join("\n")}
 
 # Loaded Skills
 ${skillBlock}
 
+# Latest Commit Metadata
+- Branch: ${branch}
+- Commit Hash: ${commitHash}
+- Commit Message: ${commitMessage}
+- Changed Files:
+${changedFiles.map((file) => `  - ${file}`).join("\n")}
+
 # Latest Commit Diff
 ${diff}
+
+# Task
+Review this commit using the loaded skills.
+
+Requirements:
+- Focus on HTML, CSS, accessibility, and commit quality based on the loaded skills.
+- Be concise but useful.
+- Use beginner-friendly language.
+- If nothing is wrong, say that clearly.
+- Format the review with these sections:
+  1. Summary
+  2. Good Changes
+  3. Problems Found
+  4. Suggested Next Steps
 `.trim();
 }
 
@@ -102,6 +124,7 @@ function detectReviewTargets(changedFiles) {
  * @returns {Promise<{ selectedSkillPaths: string[], skillBlock: string }>} Rutas cargadas y bloque listo para el prompt.
  */
 async function loadSelectedSkills(targets) {
+  // Esta skill siempre se incluye para que el modelo tambien revise el mensaje del commit.
   const selectedSkillPaths = ["skills/commit-message.md"];
 
   // Las skills se cargan condicionalmente para no llenar el prompt con instrucciones irrelevantes.
@@ -120,7 +143,7 @@ async function loadSelectedSkills(targets) {
 
   for (const skillPath of uniqueSkillPaths) {
     const content = await readFileFromRoot(skillPath);
-    contents.push(`## ${skillPath}\n${content}`);
+    contents.push(`## ${skillPath}\n\n${content}`);
   }
 
   return {
@@ -136,25 +159,22 @@ async function loadSelectedSkills(targets) {
  * @returns {Promise<void>}
  */
 async function main() {
-  const modelName = process.env.MODEL_NAME?.trim() || "mistral";
+  const modelName = getModelName();
 
   // AGENTS.md define la identidad del agente:
   // quien es, que rol tiene y como deberia comportarse.
-  const agentsInstructions = await readFileFromRoot("AGENTS.md");
-
   // PROJECT_CONTEXT.md define el contexto del proyecto:
   // que tipo de proyecto es y que clase de informacion necesita saber el agente.
-  const projectContext = await readFileFromRoot("PROJECT_CONTEXT.md");
-
-  // Un agente puede necesitar informacion del repositorio para razonar mejor sobre el cambio actual.
-  // La rama da contexto de trabajo, el hash identifica exactamente el commit
-  // y el mensaje resume que intentaba hacer la persona que hizo el commit.
-  const [branch, commitHash, commitMessage, diff] = await Promise.all([
-    getCurrentBranch(),
-    getLatestCommitHash(),
-    getLatestCommitMessage(),
-    getLatestCommitDiff()
-  ]);
+  // Leer ambos archivos por separado permite cambiar identidad y contexto sin tocar la logica.
+  const [agentsInstructions, projectContext, branch, commitHash, commitMessage, diff] =
+    await Promise.all([
+      readFileFromRoot("AGENTS.md"),
+      readFileFromRoot("PROJECT_CONTEXT.md"),
+      getCurrentBranch(),
+      getLatestCommitHash(),
+      getLatestCommitMessage(),
+      getLatestCommitDiff()
+    ]);
 
   // Un diff muestra los cambios concretos del commit.
   // Para un agente de revision esto es clave, porque la metadata sola no le dice que lineas cambiaron.
@@ -162,10 +182,14 @@ async function main() {
   const targets = detectReviewTargets(changedFiles);
   const { selectedSkillPaths, skillBlock } = await loadSelectedSkills(targets);
 
+  if (!targets.hasHtmlChanges && !targets.hasCssChanges) {
+    console.log("No HTML or CSS files changed in the latest commit.");
+    console.log("The agent will still run commit-message review.");
+  }
+
   // Un prompt es el texto completo que luego recibira un modelo.
   // Aqui lo armamos a partir de varias fuentes para que cada parte tenga una responsabilidad clara.
   const prompt = buildPrompt({
-    modelName,
     agentsInstructions,
     projectContext,
     branch,
@@ -176,10 +200,7 @@ async function main() {
     skillBlock
   });
 
-  // Separamos identidad y contexto porque no significan lo mismo:
-  // la identidad explica como debe comportarse el agente,
-  // y el contexto explica sobre que proyecto debe razonar.
-
+  // Mostramos la informacion que ya conoce el agente antes de llamar al modelo.
   console.log(`Branch: ${branch}`);
   console.log(`Latest Commit Hash: ${commitHash}`);
   console.log(`Latest Commit Message: ${commitMessage}`);
@@ -191,6 +212,7 @@ async function main() {
   for (const skillPath of selectedSkillPaths) {
     console.log(`- ${skillPath}`);
   }
+  console.log(`Model: ${modelName}`);
   console.log("");
 
   // Enviamos el prompt completo al modelo local.

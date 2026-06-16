@@ -1,4 +1,13 @@
-Focus on clarity and whether the commit message accurately describes the change.
+# Commit Message Review Skill
 
-Notice when the message is too vague or misleading.
-Suggest a clearer message when needed.
+Focus on:
+
+- clarity
+- whether the message describes the change
+- whether the message is too vague
+
+When reviewing:
+
+- say if the commit message is clear
+- suggest a better message when needed
+- keep the feedback brief

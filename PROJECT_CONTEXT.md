@@ -1,18 +1,24 @@
-# Project Context
+# PROJECT_CONTEXT.md
 
-This project is a beginner-friendly HTML and CSS learning project.
+This repository is a workshop project named `frontend-mentor-agent`.
 
-It is designed to help new developers practice:
+Purpose:
 
-- semantic HTML
-- clean CSS
-- readable structure
-- simple accessibility improvements
+- Teach beginners how to connect a local AI review agent to a Git workflow.
+- Review frontend commits focused on HTML and CSS.
+- Use Ollama locally instead of a cloud API.
+- Turn AI feedback into GitHub Issues for follow-up.
 
-The project should be treated as a teaching project, not a production system.
+Important constraints:
 
-When reviewing this project:
+- Keep the code simple.
+- Keep the code readable.
+- Prefer beginner-friendly patterns over advanced abstractions.
+- This is a teaching repo, not a production system.
 
-- prefer simple explanations
-- avoid advanced jargon when possible
-- focus on beginner-friendly improvements
+Current review scope:
+
+- HTML structure
+- CSS quality
+- Accessibility basics
+- Commit message quality

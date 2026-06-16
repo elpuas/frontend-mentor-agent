@@ -10,8 +10,15 @@ const execFileAsync = promisify(execFile);
  * @returns {Promise<string>} Salida limpia del comando.
  */
 async function runGitCommand(args) {
-  const { stdout } = await execFileAsync("git", args);
-  return stdout.trim();
+  try {
+    const { stdout } = await execFileAsync("git", args, {
+      maxBuffer: 10 * 1024 * 1024
+    });
+
+    return stdout.trim();
+  } catch (error) {
+    throw new Error(`Git command failed: git ${args.join(" ")}\n${error.stderr || error.message}`);
+  }
 }
 
 /**

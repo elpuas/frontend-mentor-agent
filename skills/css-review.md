@@ -1,4 +1,16 @@
-Focus on naming clarity, repeated values, layout problems, spacing consistency, color readability, and selector simplicity.
+# CSS Review Skill
 
-Call out confusing or overly specific selectors.
-Mention duplicated styles when they appear.
+Focus on:
+
+- naming clarity
+- repeated values
+- layout problems
+- spacing consistency
+- color readability
+- selector simplicity
+
+When reviewing:
+
+- call out confusing or overly specific selectors
+- mention duplicated styles
+- suggest small cleanups beginners can apply quickly
