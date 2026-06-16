@@ -2,6 +2,11 @@ import dotenv from "dotenv";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  getCurrentBranch,
+  getLatestCommitHash,
+  getLatestCommitMessage
+} from "./git.js";
 import { requestFromOllama } from "./ollama.js";
 
 // Carga variables desde `.env` para que el proyecto pueda configurarse sin tocar el codigo.
@@ -38,9 +43,19 @@ async function readProjectContextFile() {
  * @param {string} params.modelName Nombre del modelo configurado en el entorno.
  * @param {string} params.agentsInstructions Instrucciones base del agente.
  * @param {string} params.projectContext Contexto del proyecto actual.
+ * @param {string} params.branch Rama actual del repositorio.
+ * @param {string} params.commitHash Hash corto del commit mas reciente.
+ * @param {string} params.commitMessage Mensaje del commit mas reciente.
  * @returns {string} Prompt final listo para usarse en un modelo.
  */
-function buildPrompt({ modelName, agentsInstructions, projectContext }) {
+function buildPrompt({
+  modelName,
+  agentsInstructions,
+  projectContext,
+  branch,
+  commitHash,
+  commitMessage
+}) {
   return `
 Model: ${modelName}
 
@@ -49,12 +64,17 @@ ${agentsInstructions}
 
 # Project Context
 ${projectContext}
+
+# Git Metadata
+- Branch: ${branch}
+- Latest Commit Hash: ${commitHash}
+- Latest Commit Message: ${commitMessage}
 `.trim();
 }
 
 /**
- * Punto de entrada del paso 04.
- * En este paso el agente arma su primer prompt real, pero todavia no lo envia a ningun modelo.
+ * Punto de entrada del paso 06.
+ * En este paso el agente gana conciencia basica del repositorio usando metadatos de Git.
  *
  * @returns {Promise<void>}
  */
@@ -69,17 +89,34 @@ async function main() {
   // que tipo de proyecto es y que clase de informacion necesita saber el agente.
   const projectContext = await readProjectContextFile();
 
+  // Un agente puede necesitar informacion del repositorio para razonar mejor sobre el cambio actual.
+  // La rama da contexto de trabajo, el hash identifica exactamente el commit
+  // y el mensaje resume que intentaba hacer la persona que hizo el commit.
+  const [branch, commitHash, commitMessage] = await Promise.all([
+    getCurrentBranch(),
+    getLatestCommitHash(),
+    getLatestCommitMessage()
+  ]);
+
   // Un prompt es el texto completo que luego recibira un modelo.
   // Aqui lo armamos a partir de varias fuentes para que cada parte tenga una responsabilidad clara.
   const prompt = buildPrompt({
     modelName,
     agentsInstructions,
-    projectContext
+    projectContext,
+    branch,
+    commitHash,
+    commitMessage
   });
 
   // Separamos identidad y contexto porque no significan lo mismo:
   // la identidad explica como debe comportarse el agente,
   // y el contexto explica sobre que proyecto debe razonar.
+
+  console.log(`Branch: ${branch}`);
+  console.log(`Latest Commit Hash: ${commitHash}`);
+  console.log(`Latest Commit Message: ${commitMessage}`);
+  console.log("");
 
   // Enviamos el prompt completo al modelo local.
   // El modelo procesa ese texto y devuelve una respuesta generada.

@@ -1,6 +1,6 @@
 # Frontend Mentor Agent
 
-Este paso conecta el agente con un modelo local usando Ollama.
+Este paso agrega metadatos de Git al prompt para que el agente empiece a entender el repositorio real.
 
 ## Estructura
 
@@ -8,7 +8,8 @@ Este paso conecta el agente con un modelo local usando Ollama.
 - `.env.example`: ejemplo de configuracion del entorno.
 - `AGENTS.md`: instrucciones base que definen quien es el agente.
 - `PROJECT_CONTEXT.md`: informacion sobre el proyecto que el agente va a analizar.
-- `src/agent.js`: punto de entrada que construye el prompt y muestra la respuesta final.
+- `src/agent.js`: punto de entrada que construye el prompt, muestra metadatos y enseña la respuesta final.
+- `src/git.js`: modulo que consulta informacion del repositorio usando Git.
 - `src/ollama.js`: modulo que encapsula la comunicacion con Ollama.
 
 ## Que es AGENTS.md
@@ -101,11 +102,14 @@ En este paso, `src/agent.js` hace esto:
 1. lee `AGENTS.md`
 2. lee `PROJECT_CONTEXT.md`
 3. lee `MODEL_NAME` desde el entorno
-4. une esas piezas en un solo texto final
+4. consulta la rama actual
+5. consulta el hash del ultimo commit
+6. consulta el mensaje del ultimo commit
+7. une esas piezas en un solo texto final
 
 La idea central es esta:
 
-`AGENTS.md` + `PROJECT_CONTEXT.md` = prompt
+`AGENTS.md` + `PROJECT_CONTEXT.md` + Git metadata = prompt
 
 ## Por que este enfoque es mas flexible
 
@@ -118,6 +122,44 @@ Al separar las piezas:
 - puedes reutilizar el mismo codigo con otros proyectos o con otros agentes
 
 Esto hace que el agente sea mas facil de entender, mantener y expandir en pasos futuros.
+
+## Como se recoge la metadata de Git
+
+En este paso usamos Node.js para ejecutar comandos de Git desde `src/git.js`.
+
+Ese archivo obtiene tres datos:
+
+- rama actual
+- hash corto del ultimo commit
+- mensaje del ultimo commit
+
+## Por que esta informacion le sirve al agente
+
+La metadata del repositorio ayuda a que el agente no trabaje a ciegas.
+
+- la rama puede indicar el contexto de trabajo
+- el hash permite identificar exactamente el commit observado
+- el mensaje del commit resume la intencion del cambio
+
+Esto convierte al agente en un agente con conciencia basica del repositorio.
+
+## Como la metadata entra al prompt
+
+`src/agent.js` lee los datos de Git y los agrega como una nueva seccion dentro del prompt.
+
+De esa forma, el modelo no recibe solo identidad y contexto general, sino tambien datos reales del estado actual del repositorio.
+
+## Por que este es el primer paso hacia un agente consciente de commits
+
+Todavia no estamos leyendo el diff ni los archivos cambiados.
+
+Pero ya estamos dando al agente:
+
+- una rama
+- un commit identificable
+- un mensaje asociado a ese commit
+
+Eso prepara el terreno para los siguientes pasos, donde el agente podra razonar sobre cambios concretos.
 
 ## Que es Ollama
 
@@ -173,8 +215,10 @@ node src/agent.js
 
 La terminal debe mostrar:
 
-1. el prompt construido internamente
-2. la respuesta generada por el modelo local
+1. la rama actual
+2. el hash del ultimo commit
+3. el mensaje del ultimo commit
+4. la respuesta generada por el modelo local
 
 ## Configuracion
 
